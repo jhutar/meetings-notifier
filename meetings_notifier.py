@@ -10,7 +10,7 @@ from gi.repository import Gtk
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio
 
-import playsound
+import pygame
 
 
 class MyWindow(Gtk.ApplicationWindow):
@@ -38,7 +38,9 @@ class MyWindow(Gtk.ApplicationWindow):
         self.get_application().send_notification("notification", notification)
 
         # Play a sound
-        playsound.playsound("/usr/share/sounds/alsa/Front_Center.wav")
+        pygame.mixer.init()
+        pygame.mixer.music.load("/usr/share/sounds/alsa/Front_Center.wav")
+        pygame.mixer.music.play()
 
 class MyApp(Gtk.Application):
     def __init__(self, *args, **kwargs):
