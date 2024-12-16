@@ -12,6 +12,8 @@ from gi.repository import Gio
 
 import pygame
 
+import my_calendar
+
 
 class MyWindow(Gtk.ApplicationWindow):
     def __init__(self, *args, **kwargs):
@@ -51,5 +53,7 @@ class MyApp(Gtk.Application):
         window.present()
 
 if __name__ == "__main__":
-    app = MyApp(application_id="com.github.jhutar.meetings_notifier")
-    app.run()
+    ###app = MyApp(application_id="com.github.jhutar.meetings_notifier")
+    ###app.run()
+    cal = my_calendar.MyCalendar()
+    print(cal.get_closest_meeting())
