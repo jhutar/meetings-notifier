@@ -10,9 +10,11 @@ from gi.repository import Gtk
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio
 
-import pygame
-
 import my_calendar
+
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="Your system is avx2 capable but pygame was not built with support for it.")
+import pygame
 
 
 class MyWindow(Gtk.ApplicationWindow):
