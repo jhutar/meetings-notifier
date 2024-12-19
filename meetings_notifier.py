@@ -74,6 +74,7 @@ class MyHandler:
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 calendar = my_calendar.MyCalendar()
+sys.exit()
 
 handler = MyHandler(calendar)
 

@@ -23,3 +23,5 @@ Then I went to "Clients" menu and created "OAuth 2.0 Client IDs" client:
 Then in "Data Access" clicked "Add or remove scopes" and used "Manually add scopes" to add:
 
     https://www.googleapis.com/auth/calendar.events.readonly
+
+Then in "Enabled APIs & services" find "Google Caledar API", click it and enable it.
