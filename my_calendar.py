@@ -49,31 +49,45 @@ class MyCalendar():
     def _get_calendar(self):
         self._refresh_credentials()
 
-        # Get data from API
+        # Get data from API in a loop that handles retries on API errors and paginating
+        next_page_token = None
         now = datetime.datetime.now(datetime.timezone.utc)
         inaweek = now + datetime.timedelta(days=7)
         while True:
             try:
-                data = self.calendar.events().list(
-                    calendarId="primary",
-                    singleEvents=True,
-                    timeMin=now.isoformat(),
-                    timeMax=inaweek.isoformat(),
-                    maxAttendees=1,
-                    maxResults=100,
-                    timeZone="UTC",
-                ).execute()
+                if next_page_token is None:
+                    request = self.calendar.events().list(
+                        calendarId="primary",
+                        singleEvents=True,
+                        timeMin=now.isoformat(),
+                        timeMax=inaweek.isoformat(),
+                        maxAttendees=1,
+                        maxResults=250,
+                        timeZone="UTC",
+                    )
+                else:
+                    request = self.calendar.events().list_next(
+                        previous_request=request,
+                        previous_response=data,
+                    )
+                data = request.execute()
             except oauth2client.client.HttpAccessTokenRefreshError as e:
                 logging.warning(f"API call failed ({self._credentials_failed}): {e}")
                 if self._credentials_failed >= 5:
                     raise
                 else:
-                    time.sleep(10)
+                    # API request failed, increment failures counter
                     self._credentials_failed += 1
+
+                    time.sleep(10)
                     self._refresh_credentials()
             else:
+                # API request worked, reset failures counter
                 self._credentials_failed = 0
-                break
+
+                next_page_token = data.get('nextPageToken', None)
+                if next_page_token is None:
+                    break
 
         self.events = []
         for event in data["items"]:
