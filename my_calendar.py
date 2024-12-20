@@ -56,12 +56,12 @@ class MyCalendar():
             try:
                 data = self.calendar.events().list(
                     calendarId="primary",
-                    orderBy="startTime",
                     singleEvents=True,
                     timeMin=now.isoformat(),
                     timeMax=inaweek.isoformat(),
                     maxAttendees=1,
                     maxResults=100,
+                    timeZone="UTC",
                 ).execute()
             except oauth2client.client.HttpAccessTokenRefreshError as e:
                 logging.warning(f"API call failed ({self._credentials_failed}): {e}")
@@ -75,8 +75,27 @@ class MyCalendar():
                 self._credentials_failed = 0
                 break
 
-        import pprint
-        pprint.pprint(data)
+        self.events = []
+        for event in data["items"]:
+            if event["status"] != "confirmed":
+                continue
+
+            # If I created the meeting it might not have a attendees
+            if "creator" in event and event["creator"]["self"]:
+                logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
+                self.events.append(event)
+                continue
+
+            if "attendees" in event:
+                for attendee in event["attendees"]:
+                    if attendee["self"]:
+                        if attendee["responseStatus"] in ("accepted", "tentative"):
+                            logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
+                            self.events.append(event)
+                        break
+                continue
+
+            logging.warning(f"Failed to process event: {event}")
 
     def get_closest_meeting(self):
         return {}
