@@ -15,9 +15,10 @@ scope="https://www.googleapis.com/auth/calendar.events.readonly"
 
 class MyCalendar():
     def __init__(self):
+        self._credentials_failed = 0
         self._get_calendar()
 
-    def _get_calendar(self):
+    def _refresh_credentials(self):
         # If modifying the scope, delete the file token.json.
         token_file = 'token.json'
         if not os.path.exists(token_file):
@@ -45,31 +46,34 @@ class MyCalendar():
             cache_discovery=False,
         )
 
-        print(self.calendar)
-        print(dir(self.calendar))
-        now = datetime.datetime.now(datetime.timezone.utc)
-        tomorrow = now + datetime.timedelta(days=6)
+    def _get_calendar(self):
+        self._refresh_credentials()
 
-        try:
-            data = self.calendar.events().list(
-                calendarId="primary",
-                orderBy="startTime",
-                singleEvents=True,
-                timeMin=now.isoformat(),
-                timeMax=tomorrow.isoformat(),
-                maxAttendees=1,
-                maxResults=3,
-            ).execute()
-        except oauth2client.client.HttpAccessTokenRefreshError as e:
-            logging.warning("{} (will try again)".format(repr(e)))
-            #### TODO: Refresh token
-            ###time.sleep(10)
-            ###self._get_calendar()
-            ###if cycle < 5:
-            ###    return self.query_free_busy_api(people, start, end, cycle)
-            ###else:
-            ###    LOG.warning("Token wasn't successfully refreshed")
-            ###    raise TimeoutError
+        # Get data from API
+        now = datetime.datetime.now(datetime.timezone.utc)
+        inaweek = now + datetime.timedelta(days=7)
+        while True:
+            try:
+                data = self.calendar.events().list(
+                    calendarId="primary",
+                    orderBy="startTime",
+                    singleEvents=True,
+                    timeMin=now.isoformat(),
+                    timeMax=inaweek.isoformat(),
+                    maxAttendees=1,
+                    maxResults=100,
+                ).execute()
+            except oauth2client.client.HttpAccessTokenRefreshError as e:
+                logging.warning(f"API call failed ({self._credentials_failed}): {e}")
+                if self._credentials_failed >= 5:
+                    raise
+                else:
+                    time.sleep(10)
+                    self._credentials_failed += 1
+                    self._refresh_credentials()
+            else:
+                self._credentials_failed = 0
+                break
 
         import pprint
         pprint.pprint(data)
