@@ -1,0 +1,7 @@
+.*.swp
+
+# My Google client API secret
+client_secret.json
+
+# Application credential cache
+token.json
