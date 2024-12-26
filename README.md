@@ -1,6 +1,13 @@
 Meetings notifier
 =================
 
+System requirements
+-------------------
+
+To run without virtual environment on Fedora:
+
+    dnf install python3-pygame python3-google-api-client python3-oauth2client
+
 Get credentials to access Google Calendar
 -----------------------------------------
 
