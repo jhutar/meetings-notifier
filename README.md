@@ -8,6 +8,13 @@ To run without virtual environment on Fedora:
 
     dnf install python3-pygame python3-google-api-client python3-oauth2client
 
+Development
+-----------
+
+To run locally, e.g. from git checkout:
+
+    python -m meetings_notifier
+
 Get credentials to access Google Calendar
 -----------------------------------------
 

@@ -6,22 +6,14 @@ import signal
 import os
 import gi
 
-import warnings
-
-warnings.filterwarnings(
-    "ignore",
-    category=RuntimeWarning,
-    message="Your system is avx2 capable but pygame was not built with support for it.",
-)
-import pygame
-
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 gi.require_version("Notify", "0.7")
 from gi.repository import Notify
 
-import my_calendar
+from . import my_calendar
+from . import my_sound
 
 
 APPID = "com.github.jhutar.meetings-notifier"
@@ -53,9 +45,7 @@ class MyHandler:
         Notify.Notification.new("Notification", str(self.calendar.get_closest_meeting()), ICON).show()
 
         # Play a sound
-        pygame.mixer.init()
-        pygame.mixer.music.load("/usr/share/sounds/alsa/Front_Center.wav")
-        pygame.mixer.music.play()
+        my_sound.play()
 
     def onShowOrHide(self, *args):
         if self.window_is_hidden:
@@ -70,28 +60,30 @@ class MyHandler:
         Gtk.main_quit()
 
 
-# Handle pressing Ctr+C properly, ignored by default
-signal.signal(signal.SIGINT, signal.SIG_DFL)
+def main():
+    # Handle pressing Ctr+C properly, ignored by default
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-calendar = my_calendar.MyCalendar()
-sys.exit()
+    calendar = my_calendar.MyCalendar()
+    import sys
+    sys.exit()
 
-handler = MyHandler(calendar)
+    handler = MyHandler(calendar)
 
-builder = Gtk.Builder()
-builder.add_from_file("meetings_notifier.glade")
-builder.connect_signals(handler)
+    builder = Gtk.Builder()
+    builder.add_from_file("meetings_notifier.glade")
+    builder.connect_signals(handler)
 
-window = builder.get_object("window1")
-window.set_icon_from_file(ICON)
-window.hide()
-handler.window_is_hidden = True
+    window = builder.get_object("window1")
+    window.set_icon_from_file(ICON)
+    window.hide()
+    handler.window_is_hidden = True
 
-menu = builder.get_object("menu1")
-icon = MyStatusIcon(APPID, ICON, menu)
+    menu = builder.get_object("menu1")
+    icon = MyStatusIcon(APPID, ICON, menu)
 
-print(calendar.get_closest_meeting())
+    print(calendar.get_closest_meeting())
 
-Notify.init(APPID)
+    Notify.init(APPID)
 
-Gtk.main()
+    Gtk.main()
