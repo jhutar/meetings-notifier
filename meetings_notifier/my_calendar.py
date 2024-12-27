@@ -15,8 +15,9 @@ scope="https://www.googleapis.com/auth/calendar.events.readonly"
 
 class MyCalendar():
     def __init__(self):
+        self.events = []
         self._credentials_failed = 0
-        self._get_calendar()
+        self._populate_events()
 
     def _refresh_credentials(self):
         # If modifying the scope, delete the file token.json.
@@ -85,31 +86,39 @@ class MyCalendar():
                 # API request worked, reset failures counter
                 self._credentials_failed = 0
 
+                for event in data["items"]:
+                    yield event
+
                 next_page_token = data.get('nextPageToken', None)
                 if next_page_token is None:
                     break
 
-        self.events = []
-        for event in data["items"]:
+    def _filtered_events(self):
+        for event in self._get_calendar():
             if event["status"] != "confirmed":
                 continue
 
             # If I created the meeting it might not have a attendees
             if "creator" in event and event["creator"]["self"]:
-                logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
-                self.events.append(event)
+                yield event
                 continue
 
             if "attendees" in event:
                 for attendee in event["attendees"]:
                     if attendee["self"]:
                         if attendee["responseStatus"] in ("accepted", "tentative"):
-                            logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
-                            self.events.append(event)
+                            yield event
                         break
                 continue
 
             logging.warning(f"Failed to process event: {event}")
 
+    def _populate_events(self):
+        for event in self._filtered_events():
+            logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
+            event["start"]["dateTime"] = datetime.datetime.fromisoformat(event["start"]["dateTime"])
+            event["end"]["dateTime"] = datetime.datetime.fromisoformat(event["end"]["dateTime"])
+            self.events.append(event)
+
     def get_closest_meeting(self):
-        return {}
+        return self.events[0]

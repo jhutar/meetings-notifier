@@ -65,6 +65,7 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     calendar = my_calendar.MyCalendar()
+    print(calendar.get_closest_meeting())
     import sys
     sys.exit()
 
