@@ -39,6 +39,7 @@ class MyHandler:
     def __init__(self, calendar):
         self.calendar = calendar
 
+        self.window = None
         self.window_is_hidden = True
 
     def onNotify(self, *args):
@@ -49,9 +50,9 @@ class MyHandler:
 
     def onShowOrHide(self, *args):
         if self.window_is_hidden:
-            window.show()
+            self.window.show()
         else:
-            window.hide()
+            self.window.hide()
 
         self.window_is_hidden = not self.window_is_hidden
 
@@ -65,19 +66,20 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     calendar = my_calendar.MyCalendar()
-    print(calendar.get_closest_meeting())
-    import sys
-    sys.exit()
+    ###print(calendar.get_closest_meeting())
+    ###import sys
+    ###sys.exit()
 
     handler = MyHandler(calendar)
 
     builder = Gtk.Builder()
-    builder.add_from_file("meetings_notifier.glade")
+    builder.add_from_file(os.path.join(CURRDIR, "meetings_notifier.glade"))
     builder.connect_signals(handler)
 
     window = builder.get_object("window1")
     window.set_icon_from_file(ICON)
     window.hide()
+    handler.window = window
     handler.window_is_hidden = True
 
     menu = builder.get_object("menu1")
