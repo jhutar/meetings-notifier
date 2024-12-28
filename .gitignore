@@ -2,7 +2,7 @@
 .*.swp
 
 # Ignore __pycache__
-meetings_notifier/__pycache__/
+__pycache__/
 
 # My Google client API secret
 client_secret.json
