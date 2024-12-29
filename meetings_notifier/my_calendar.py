@@ -85,7 +85,6 @@ class MyCalendar():
             else:
                 # API request worked, reset failures counter
                 self._credentials_failed = 0
-
                 for event in data["items"]:
                     yield event
 
