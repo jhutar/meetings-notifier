@@ -82,6 +82,10 @@ def main():
     handler.window = window
     handler.window_is_hidden = True
 
+    text_view = builder.get_object("text1")
+    buffer = text_view.get_buffer()
+    buffer.set_text(str(calendar.get_closest_meeting()))
+
     menu = builder.get_object("menu1")
     icon = MyStatusIcon(APPID, ICON, menu)
 

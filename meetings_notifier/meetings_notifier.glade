@@ -36,10 +36,28 @@
   <object class="GtkWindow" id="window1">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">GTK Test</property>
-    <property name="resizable">False</property>
-    <signal name="delete-event" handler="onQuit" swapped="no"/>
+    <property name="has-resize-grip">True</property>
+    <signal name="delete-event" handler="onShowOrHide" swapped="no"/>
     <child>
-      <placeholder/>
+      <object class="GtkScrolledWindow" id="screolledwindow1">
+        <property name="visible">True</property>
+        <property name="can-focus">True</property>
+        <property name="shadow-type">in</property>
+        <property name="min-content-width">100</property>
+        <property name="min-content-height">100</property>
+        <child>
+          <object class="GtkTextView" id="text1">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="editable">False</property>
+            <property name="left-margin">10</property>
+            <property name="right-margin">10</property>
+            <property name="cursor-visible">False</property>
+            <property name="accepts-tab">False</property>
+            <property name="monospace">True</property>
+          </object>
+        </child>
+      </object>
     </child>
   </object>
 </interface>
