@@ -23,6 +23,10 @@ CURRDIR = os.path.dirname(os.path.abspath(__file__))
 ICON = os.path.join(CURRDIR, "python3.xpm")
 
 
+def event_to_text(event):
+    return f"When: {event['start']['dateTime'].isoformat()}\nWhat: {event['summary']}\n"
+
+
 class MyHandler:
 
     def __init__(self, builder, calendar):
@@ -51,7 +55,9 @@ class MyHandler:
         self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time)
 
     def onNotify(self, *args):
-        Notify.Notification.new("Notification", str(self.calendar.get_closest_meeting()), ICON).show()
+        event = self.calendar.get_closest_meeting()
+        text = event_to_text(event)
+        Notify.Notification.new("Notification", text, ICON).show()
         my_sound.play()
 
     def onShowOrHide(self, *args):
@@ -63,7 +69,9 @@ class MyHandler:
             self.window_is_hidden = True
 
     def onTextChange(self):
-        text = str(self.calendar.get_closest_meeting())
+        text = ""
+        for event in self.calendar.events:
+            text += event_to_text(event) + "\n"
         self.buffer.set_text(text)
         GObject.timeout_add_seconds(3, self.onTextChange) 
 

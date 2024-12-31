@@ -43,8 +43,8 @@
         <property name="visible">True</property>
         <property name="can-focus">True</property>
         <property name="shadow-type">in</property>
-        <property name="min-content-width">100</property>
-        <property name="min-content-height">100</property>
+        <property name="min-content-width">500</property>
+        <property name="min-content-height">300</property>
         <child>
           <object class="GtkTextView" id="text1">
             <property name="visible">True</property>
