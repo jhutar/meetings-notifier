@@ -48,6 +48,7 @@ class MyHandler:
 
         text_view = self.builder.get_object("text1")
         self.buffer = text_view.get_buffer()
+        GObject.timeout_add_seconds(3, self.onTextChange)
 
         self.onTextChange()
 
@@ -73,7 +74,7 @@ class MyHandler:
         for event in self.calendar.events:
             text += event_to_text(event) + "\n"
         self.buffer.set_text(text)
-        GObject.timeout_add_seconds(3, self.onTextChange) 
+        return True
 
     def onQuit(self, *args):
         Notify.uninit()
