@@ -125,5 +125,7 @@ class MyCalendar():
             event["end"]["dateTime"] = datetime.datetime.fromisoformat(event["end"]["dateTime"])
             self.events.append(event)
 
+        self.events = sorted(self.events, key=lambda x: x['start']['dateTime'])
+
     def get_closest_meeting(self):
         return self.events[0]
