@@ -24,13 +24,17 @@ ICON = os.path.join(CURRDIR, "python3.xpm")
 
 
 def event_to_text(event):
-    return f"When: {event['start']['dateTime'].isoformat()}\nWhat: {event['summary']}\n"
+    if event == {}:
+        return "No event"
+    else:
+        return f"When: {event['start']['dateTime'].isoformat()}\nWhat: {event['summary']}\n"
 
 
 class MyHandler:
 
     def __init__(self, builder, calendar):
         self.calendar = calendar
+        GObject.timeout_add_seconds(60, self.calendar.refresh_events)
 
         self.builder = builder
         self.builder.connect_signals(self)

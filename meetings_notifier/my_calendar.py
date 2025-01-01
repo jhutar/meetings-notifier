@@ -17,7 +17,7 @@ class MyCalendar():
     def __init__(self):
         self.events = []
         self._credentials_failed = 0
-        self._populate_events()
+        self.refresh_events()
 
     def _refresh_credentials(self):
         # If modifying the scope, delete the file token.json.
@@ -119,13 +119,23 @@ class MyCalendar():
             logging.warning(f"Failed to process event: {event}")
 
     def _populate_events(self):
+        events = []
+
         for event in self._filtered_events():
             logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
             event["start"]["dateTime"] = datetime.datetime.fromisoformat(event["start"]["dateTime"])
             event["end"]["dateTime"] = datetime.datetime.fromisoformat(event["end"]["dateTime"])
-            self.events.append(event)
+            events.append(event)
 
-        self.events = sorted(self.events, key=lambda x: x['start']['dateTime'])
+        return sorted(events, key=lambda x: x['start']['dateTime'])
+
+    def refresh_events(self):
+        # TODO: Make this a non blocking thread
+        self.events = self._populate_events()
+        return True   # Needed for Gtk timer that calls this not to disappear
 
     def get_closest_meeting(self):
-        return self.events[0]
+        try:
+            return self.events[0]
+        except IndexError:
+            return {}
