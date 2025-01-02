@@ -94,20 +94,26 @@ class MyCalendar():
 
     def _filtered_events(self):
         for event in self._get_calendar():
+            if "eventType" in event and event["eventType"] in ("workingLocation",):
+                continue
+
             if event["status"] != "confirmed":
                 continue
 
             # If I created the meeting it might not have a attendees
-            if "creator" in event and event["creator"]["self"]:
+            if "creator" in event and "self" in event["creator"] and event["creator"]["self"]:
                 yield event
                 continue
 
             if "attendees" in event:
                 for attendee in event["attendees"]:
-                    if attendee["self"]:
+                    if "self" in attendee and attendee["self"]:
                         if attendee["responseStatus"] in ("accepted", "tentative"):
                             yield event
                         break
+                continue
+
+            if "start" not in event or "dateTime" not in event["start"]:
                 continue
 
             logging.warning(f"Failed to process event: {event}")
