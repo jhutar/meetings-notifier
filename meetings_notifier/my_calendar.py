@@ -94,7 +94,7 @@ class MyCalendar():
 
     def _filtered_events(self):
         for event in self._get_calendar():
-            if "eventType" in event and event["eventType"] in ("workingLocation",):
+            if "eventType" in event and event["eventType"] in ("workingLocation", "outOfOffice"):
                 continue
 
             if event["status"] != "confirmed":
