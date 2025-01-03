@@ -4,7 +4,6 @@
 
 import datetime
 import logging
-import signal
 import os
 import gi
 
@@ -42,14 +41,15 @@ class MyHandler:
     STATUS_URGENCY_3 = 3
     STATUS_ACKNOWLEADGED = 10
 
-    def __init__(self, builder, calendar):
+    def __init__(self, calendar):
         self.status = {}
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.calendar = calendar
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
 
-        self.builder = builder
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(os.path.join(CURRDIR, "meetings_notifier.glade"))
         self.builder.connect_signals(self)
 
         self.window = self.builder.get_object("window1")
@@ -57,7 +57,7 @@ class MyHandler:
         self.window.hide()
         self.window_is_hidden = True
 
-        self.menu = builder.get_object("menu1")
+        self.menu = self.builder.get_object("menu1")
         self.trayicon = Gtk.StatusIcon()
         self.trayicon.set_from_file(ICON)
         self.trayicon.connect("popup-menu", self.onPopupMenu)
@@ -69,6 +69,10 @@ class MyHandler:
         self.onTextChange()
 
         GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onAlertCheck)
+
+    def run(self):
+        Notify.init(APPID)
+        return Gtk.main()
 
     def onPopupMenu(self, icon, button, time):
         self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time)
@@ -146,21 +150,3 @@ class MyHandler:
     def onQuit(self, *args):
         Notify.uninit()
         Gtk.main_quit()
-
-
-def main():
-    helpers.setup_logger(logging.DEBUG)
-
-    # Handle pressing Ctr+C properly, ignored by default
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    calendar = my_calendar.MyCalendar()
-
-    builder = Gtk.Builder()
-    builder.add_from_file(os.path.join(CURRDIR, "meetings_notifier.glade"))
-
-    handler = MyHandler(builder, calendar)
-
-    Notify.init(APPID)
-
-    Gtk.main()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from . import my_ui
+from . import cli
 
 
-my_ui.main()
+cli.main()
