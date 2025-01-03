@@ -169,6 +169,9 @@ class MyHandler:
             if event_id not in self.status:
                 self.status[event_id] = {"status": self.STATUS_WAITING}
 
+            if self.status[event_id]["status"] >= self.STATUS_ACKNOWLEADGED:
+                continue
+
             now = datetime.datetime.now(datetime.timezone.utc)
             event_in = (event["start"]["dateTime"] - now).total_seconds()
 
@@ -198,6 +201,7 @@ class MyHandler:
 
     def onAlertAcknowleadge(self, notification, action):
         if action == "acknowleadge":
+            self.logger.info(f"Event {notification.event_id} was acknowleadged")
             self.status[notification.event_id]["status"] = self.STATUS_ACKNOWLEADGED
 
     def onQuit(self, *args):
