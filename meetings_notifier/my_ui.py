@@ -3,7 +3,9 @@
 # Original code (C) Aleksander Alekseev 2016, http://eax.me/
 
 import datetime
+import time
 import logging
+import logging.handlers
 import signal
 import os
 import gi
@@ -33,6 +35,52 @@ ALERT_URGENCY_3_AFTER = 10
 ALERT_IGNORE_AFTER = -600
 
 
+def setup_logger(stderr_log_lvl):
+    """
+    Create logger that logs to both stderr and log file but with different log levels
+    """
+    # Remove all handlers from root logger if any
+    logging.basicConfig(
+        level=logging.NOTSET,
+        handlers=[],
+        force=True,
+    )
+    # Change root logger level from WARNING (default) to NOTSET in order for all messages to be delegated
+    logging.getLogger().setLevel(logging.NOTSET)
+
+    # Log message format
+    formatter = logging.Formatter(
+        "%(asctime)s %(name)s %(threadName)s %(levelname)s %(message)s"
+    )
+    formatter.converter = time.gmtime
+
+    ## Silence loggers of some chatty libraries we use
+    #urllib_logger = logging.getLogger("urllib3.connectionpool")
+    #urllib_logger.setLevel(logging.WARNING)
+    #selenium_logger = logging.getLogger("selenium.webdriver.remote.remote_connection")
+    #selenium_logger.setLevel(logging.WARNING)
+    #kafka_logger = logging.getLogger("kafka")
+    #kafka_logger.setLevel(logging.WARNING)
+
+    # Add stderr handler, with provided level
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(stderr_log_lvl)
+    logging.getLogger().addHandler(console_handler)
+
+    # Add file rotating handler, with level DEBUG
+    rotating_handler = logging.handlers.RotatingFileHandler(
+        filename="/tmp/meetings_notifier.log",
+        maxBytes=100 * 1000,
+        backupCount=2,
+    )
+    rotating_handler.setFormatter(formatter)
+    rotating_handler.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(rotating_handler)
+
+    return logging.getLogger()
+
+
 def event_to_text(event):
     if event == {}:
         return "No event"
@@ -51,10 +99,13 @@ class MyHandler:
 
     STATUS_WAITING = 0
     STATUS_URGENCY_1 = 1
+    STATUS_URGENCY_2 = 2
+    STATUS_URGENCY_3 = 3
     STATUS_ACKNOWLEADGED = 10
 
     def __init__(self, builder, calendar):
         self.status = {}
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.calendar = calendar
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
@@ -110,36 +161,38 @@ class MyHandler:
         return True
 
     def onAlertCheck(self):
-        event = self.calendar.get_closest_meeting()
-        if event == {}:
-            return
+        for event in self.calendar.events:
+            if event == {}:
+                return
 
-        event_id = event["id"]
-        if event_id not in self.status:
-            self.status[event_id] = {"status": self.STATUS_WAITING}
+            event_id = event["id"]
+            if event_id not in self.status:
+                self.status[event_id] = {"status": self.STATUS_WAITING}
 
-        now = datetime.datetime.now(datetime.timezone.utc)
-        event_in = (event["start"]["dateTime"] - now).seconds
-        if event_in < ALERT_IGNORE_AFTER:
-            logging.warning(f"Ignoring event {event_to_log(event)} as it is overdue: {event_in}")
-        elif event_in < ALERT_URGENCY_3_AFTER:
-            logging.info(f"Event {event_to_log(event)} almost starts: {event_in}")
-            if self.status[event_id]["status"] < self.STATUS_URGENCY_3:
-                self.status[event_id]["status"] = self.STATUS_URGENCY_3
-                self.onNotify()
-                my_sound.play()
-        elif event_in < ALERT_URGENCY_2_AFTER:
-            logging.info(f"Event {event_to_log(event)} starts in a bit: {event_in}")
-            if self.status[event_id]["status"] < self.STATUS_URGENCY_2:
-                self.status[event_id]["status"] = self.STATUS_URGENCY_2
-                self.onNotify()
-        elif event_in < ALERT_URGENCY_1_AFTER:
-            logging.info(f"Event {event_to_log(event)} soon to start: {event_in}")
-            if self.status[event_id]["status"] < self.STATUS_URGENCY_1:
-                self.status[event_id]["status"] = self.STATUS_URGENCY_1
-                self.onNotify()
-        else:
-            pass
+            now = datetime.datetime.now(datetime.timezone.utc)
+            event_in = (event["start"]["dateTime"] - now).total_seconds()
+
+            if event_in < ALERT_IGNORE_AFTER:
+                self.logger.warning(f"Ignoring event {event_to_log(event)} as it is overdue: {event_in}")
+                self.status[event_id]["status"] = self.STATUS_ACKNOWLEADGED
+            elif event_in < ALERT_URGENCY_3_AFTER:
+                self.logger.info(f"Event {event_to_log(event)} almost starts: {event_in}")
+                if self.status[event_id]["status"] < self.STATUS_URGENCY_3:
+                    self.status[event_id]["status"] = self.STATUS_URGENCY_3
+                    self.onNotify()
+                    my_sound.play()
+            elif event_in < ALERT_URGENCY_2_AFTER:
+                self.logger.info(f"Event {event_to_log(event)} starts in a bit: {event_in}")
+                if self.status[event_id]["status"] < self.STATUS_URGENCY_2:
+                    self.status[event_id]["status"] = self.STATUS_URGENCY_2
+                    self.onNotify()
+            elif event_in < ALERT_URGENCY_1_AFTER:
+                self.logger.info(f"Event {event_to_log(event)} soon to start: {event_in}")
+                if self.status[event_id]["status"] < self.STATUS_URGENCY_1:
+                    self.status[event_id]["status"] = self.STATUS_URGENCY_1
+                    self.onNotify()
+            else:
+                pass
 
         return True
 
@@ -153,6 +206,8 @@ class MyHandler:
 
 
 def main():
+    setup_logger(logging.DEBUG)
+
     # Handle pressing Ctr+C properly, ignored by default
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 

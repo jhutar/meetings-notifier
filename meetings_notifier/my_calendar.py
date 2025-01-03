@@ -15,6 +15,7 @@ scope="https://www.googleapis.com/auth/calendar.events.readonly"
 
 class MyCalendar():
     def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.events = []
         self._credentials_failed = 0
         self.refresh_events()
@@ -28,7 +29,7 @@ class MyCalendar():
         store = oauth2client.file.Storage(token_file)
 
         # Read the credentials in
-        logging.info("Authentication to google calendar api")
+        self.logger.info("Authentication to google calendar api")
         creds = store.get()
         if not creds or creds.invalid:
             flow = oauth2client.client.flow_from_clientsecrets(
@@ -39,7 +40,7 @@ class MyCalendar():
             creds = oauth2client.tools.run_flow(flow, store, flags)
 
         # Build the calendar object
-        logging.info("Building google calendar API object")
+        self.logger.info("Building google calendar API object")
         self.calendar = googleapiclient.discovery.build(
             'calendar',
             'v3',
@@ -73,7 +74,7 @@ class MyCalendar():
                     )
                 data = request.execute()
             except oauth2client.client.HttpAccessTokenRefreshError as e:
-                logging.warning(f"API call failed ({self._credentials_failed}): {e}")
+                self.logger.warning(f"API call failed ({self._credentials_failed}): {e}")
                 if self._credentials_failed >= 5:
                     raise
                 else:
@@ -100,6 +101,9 @@ class MyCalendar():
             if event["status"] != "confirmed":
                 continue
 
+            if "start" not in event or "dateTime" not in event["start"]:
+                continue
+
             # If I created the meeting it might not have a attendees
             if "creator" in event and "self" in event["creator"] and event["creator"]["self"]:
                 yield event
@@ -113,16 +117,13 @@ class MyCalendar():
                         break
                 continue
 
-            if "start" not in event or "dateTime" not in event["start"]:
-                continue
-
-            logging.warning(f"Failed to process event: {event}")
+            self.logger.warning(f"Failed to process event: {event}")
 
     def _populate_events(self):
         events = []
 
         for event in self._filtered_events():
-            logging.debug(f"Loaded event {event['summary']} ({event['start']} - {event['end']})")
+            self.logger.debug(f"Loaded event {event['summary']} ({event['start']['dateTime']} - {event['end']['dateTime']})")
             event["start"]["dateTime"] = datetime.datetime.fromisoformat(event["start"]["dateTime"])
             event["end"]["dateTime"] = datetime.datetime.fromisoformat(event["end"]["dateTime"])
             events.append(event)
