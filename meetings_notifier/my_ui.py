@@ -43,19 +43,10 @@ class MyAlerter:
         self.do_icon = False
         self.do_sound = False
 
-        self.events = []
-
 
 class MyHandler:
 
-    STATUS_WAITING = 0
-    STATUS_URGENCY_1 = 1
-    STATUS_URGENCY_2 = 2
-    STATUS_URGENCY_3 = 3
-    STATUS_ACKNOWLEADGED = 10
-
-    def __init__(self, calendar):
-        self.status = {}
+    def __init__(self, builder, calendar):
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.config = helpers.MyConfig()
@@ -94,16 +85,14 @@ class MyHandler:
     def onPopupMenu(self, icon, button, time):
         self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time)
 
-    def onNotify(self, *args):
-        event = self.calendar.get_closest_meeting()
-        event_id = event["id"]
-        text = helpers.event_to_text(event)
+    def onNotify(self, event_id):
+        text = event_to_text(self.calendar.events[event_id])
         notification = Notify.Notification.new("Notification", text, ICON)
         notification.set_urgency(Notify.Urgency.CRITICAL)
         notification.add_action("acknowleadge", "Acknowleadge", self.onAlertAcknowleadge)
         notification.show()
         notification.event_id = event_id   # HACK: Pass event ID with notification - it is used by acknowleadge callback
-        self.status[event_id]["notification"] = notification
+        self.calendar.set_notification(event_id, notification)
 
     def onShowOrHide(self, *args):
         if self.window_is_hidden:
@@ -115,54 +104,49 @@ class MyHandler:
 
     def onTextChange(self):
         text = ""
-        for event in self.calendar.events:
-            text += helpers.event_to_text(event) + "\n"
+        for event in self.calendar.events.values():
+            text += event_to_text(event) + "\n"
         self.buffer.set_text(text)
         return True
 
     def onAlertCheck(self):
-        for event in self.calendar.events:
-            if event == {}:
-                return
-
-            event_id = event["id"]
-            if event_id not in self.status:
-                self.status[event_id] = {"status": self.STATUS_WAITING}
-
-            if self.status[event_id]["status"] >= self.STATUS_ACKNOWLEADGED:
+        for event_id, event in self.calendar.events.items():
+            if self.calendar.get_status(event_id) >= my_calendar.STATUS_ACKNOWLEADGED:
                 continue
 
             now = datetime.datetime.now(datetime.timezone.utc)
-            event_in = (event["start"]["dateTime"] - now).total_seconds()
+            event_in = (event["start"] - now).total_seconds()
 
             if event_in < ALERT_IGNORE_AFTER:
-                self.logger.warning(f"Ignoring event {helpers.event_to_log(event)} as it is overdue: {event_in}")
-                self.status[event_id]["status"] = self.STATUS_ACKNOWLEADGED
-            elif event_in < ALERT_URGENCY_3_AFTER:
-                self.logger.info(f"Event {helpers.event_to_log(event)} almost starts: {event_in}")
-                if self.status[event_id]["status"] < self.STATUS_URGENCY_3:
-                    self.status[event_id]["status"] = self.STATUS_URGENCY_3
+                self.logger.warning(f"Ignoring event {event_to_log(event)} as it is overdue: {event_in}")
+                self.calendar.set_status(event_id, my_calendar.STATUS_ACKNOWLEADGED)
+                continue
+
+            if event_in < ALERT_URGENCY_3_AFTER:
+                if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_3):
+                    self.logger.info(f"Event {event_to_log(event)} almost starts: {event_in}")
+                    self.onNotify(event_id)
+                    my_sound.play()
+                    continue
+
+            if event_in < ALERT_URGENCY_2_AFTER:
+                if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_2):
+                    self.logger.info(f"Event {event_to_log(event)} starts in a bit: {event_in}")
+                    self.onNotify(event_id)
+                    continue
+
+            if event_in < ALERT_URGENCY_1_AFTER:
+                if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_1):
+                    self.logger.info(f"Event {event_to_log(event)} soon to start: {event_in}")
                     self.onNotify()
-                    self.sound.play()
-            elif event_in < ALERT_URGENCY_2_AFTER:
-                self.logger.info(f"Event {helpers.event_to_log(event)} starts in a bit: {event_in}")
-                if self.status[event_id]["status"] < self.STATUS_URGENCY_2:
-                    self.status[event_id]["status"] = self.STATUS_URGENCY_2
-                    self.onNotify()
-            elif event_in < ALERT_URGENCY_1_AFTER:
-                self.logger.info(f"Event {helpers.event_to_log(event)} soon to start: {event_in}")
-                if self.status[event_id]["status"] < self.STATUS_URGENCY_1:
-                    self.status[event_id]["status"] = self.STATUS_URGENCY_1
-                    self.onNotify()
-            else:
-                pass
+                    continue
 
         return True
 
     def onAlertAcknowleadge(self, notification, action):
         if action == "acknowleadge":
-            self.logger.info(f"Event {notification.event_id} was acknowleadged")
-            self.status[notification.event_id]["status"] = self.STATUS_ACKNOWLEADGED
+            if self.calendar.set_status(notification.event_id, my_calendar.STATUS_ACKNOWLEADGED):
+                self.logger.info(f"Event {notification.event_id} was acknowleadged")
 
     def onQuit(self, *args):
         Notify.uninit()

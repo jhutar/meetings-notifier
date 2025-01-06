@@ -1,3 +1,4 @@
+import collections
 import datetime
 import logging
 import os
@@ -13,10 +14,16 @@ from concurrent.futures import TimeoutError
 secret_file="client_secret.json"
 scope="https://www.googleapis.com/auth/calendar.events.readonly"
 
+STATUS_WAITING = 0
+STATUS_URGENCY_1 = 1
+STATUS_URGENCY_2 = 2
+STATUS_URGENCY_3 = 3
+STATUS_ACKNOWLEADGED = 10
+
 class MyCalendar():
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.events = []
+        self.events = collections.OrderedDict()
         self._credentials_failed = 0
         self.refresh_events()
 
@@ -120,23 +127,46 @@ class MyCalendar():
             self.logger.warning(f"Failed to process event: {event}")
 
     def _populate_events(self):
-        events = []
-
         for event in self._filtered_events():
             self.logger.debug(f"Loaded event {event['summary']} ({event['start']['dateTime']} - {event['end']['dateTime']})")
-            event["start"]["dateTime"] = datetime.datetime.fromisoformat(event["start"]["dateTime"])
-            event["end"]["dateTime"] = datetime.datetime.fromisoformat(event["end"]["dateTime"])
-            events.append(event)
+            event_id, event_simple = self._cal_to_event(event)
+            if event_id not in self.events:
+                self.events[event_id] = event_simple
+            else:
+                self.events[event_id].update(event_simple)
 
-        return sorted(events, key=lambda x: x['start']['dateTime'])
+    def _cal_to_event(self, event):
+        """Convert calendar event to simplified event representation we use internally"""
+        event_id = event["id"]
+        event_start = datetime.datetime.fromisoformat(event["start"]["dateTime"])
+        event_end = datetime.datetime.fromisoformat(event["end"]["dateTime"])
+        event_summary = event["summary"]
+        return event_id, {
+            "summary": event_summary,
+            "start": event_start,
+            "end": event_end,
+        }
 
     def refresh_events(self):
         # TODO: Make this a non blocking thread
-        self.events = self._populate_events()
+        self._populate_events()
         return True   # Needed for Gtk timer that calls this not to disappear
 
-    def get_closest_meeting(self):
-        try:
-            return self.events[0]
-        except IndexError:
-            return {}
+    def set_notification(self, event_id, notification):
+        self.events[event_id]["notification"] = notification
+
+    def get_notification(self, event_id):
+        return self.events[event_id].get("notification", None)
+
+    def set_status(self, event_id, status):
+        status_current = self.get_status(event_id)
+        if status == status_current:
+            return False
+        if status > status_current:
+            self.events[event_id]["status"] = status
+            return True
+        else:
+            raise ValueError(f"Status {status} is not higher than current {status_current}")
+
+    def get_status(self, event_id):
+        return self.events[event_id].get("status", STATUS_WAITING)
