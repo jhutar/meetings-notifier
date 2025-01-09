@@ -34,19 +34,6 @@ ALERT_URGENCY_3_AFTER = (datetime.datetime.fromisoformat("2025-01-09T17:30:00+00
 ALERT_IGNORE_AFTER = -600
 
 
-class MyConfig:
-    config = {
-        "sound_alerts": [
-            {
-                "sink": "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink",
-                "modify": True,
-                "volume": 0.3,
-            },
-        ],
-        "sound_file": "/usr/share/sounds/alsa/Front_Center.wav",
-    }
-
-
 class MyAlerter:
     def __init__(self, calendar):
         self.calendar = calendar
@@ -71,7 +58,7 @@ class MyHandler:
         self.status = {}
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.config = MyConfig()
+        self.config = helpers.MyConfig()
 
         self.sound = my_sound.MySound(self.config.config)
 

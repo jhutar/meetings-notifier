@@ -1,6 +1,9 @@
 import logging
 import logging.handlers
+import os.path
+import shutil
 import time
+import yaml
 
 
 def setup_logger(stderr_log_lvl):
@@ -61,3 +64,19 @@ def event_to_log(event):
         return "No event"
     else:
         return f"{event['summary']}/{event['id']}({event['start']['dateTime'].isoformat()})"
+
+
+class MyConfig:
+    def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        # TODO: Lets use XDG spec for placing config (and logs): https://stackoverflow.com/questions/52670836/standard-log-locations-for-a-cross-platform-application
+        user_home_dir = os.path.expanduser("~")
+        user_config = os.path.join(user_home_dir, ".meetings_notifier")
+
+        if not os.path.isfile(user_config):
+            self.logger.info(f"Copying default config to {user_config}")
+            shutil.copyfile("meetings_notifier.config", user_config)
+
+        with open(user_config, "r") as fd:
+            self.config = yaml.safe_load(fd)
