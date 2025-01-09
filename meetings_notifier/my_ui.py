@@ -5,6 +5,7 @@
 import datetime
 import logging
 import os
+import yaml
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -27,10 +28,23 @@ TIMER_CALENDAR_REFRESH = 60
 TIMER_WINDOW_TEXT_REFRESH = 3
 TIMER_ALERT_CHECK = 3
 ALERT_URGENCY_1_AFTER = 100
-#ALERT_URGENCY_1_AFTER = (datetime.datetime.fromisoformat("2025-01-03T07:00:00+00:00") - datetime.datetime.now(datetime.timezone.utc)).seconds - 2
 ALERT_URGENCY_2_AFTER = 30
 ALERT_URGENCY_3_AFTER = 10
+ALERT_URGENCY_3_AFTER = (datetime.datetime.fromisoformat("2025-01-09T17:30:00+00:00") - datetime.datetime.now(datetime.timezone.utc)).seconds - 2
 ALERT_IGNORE_AFTER = -600
+
+
+class MyConfig:
+    config = {
+        "sound_alerts": [
+            {
+                "sink": "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink",
+                "modify": True,
+                "volume": 0.3,
+            },
+        ],
+        "sound_file": "/usr/share/sounds/alsa/Front_Center.wav",
+    }
 
 
 class MyHandler:
@@ -44,6 +58,10 @@ class MyHandler:
     def __init__(self, calendar):
         self.status = {}
         self.logger = logging.getLogger(self.__class__.__name__)
+
+        self.config = MyConfig()
+
+        self.sound = my_sound.MySound(self.config.config)
 
         self.calendar = calendar
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
@@ -126,7 +144,7 @@ class MyHandler:
                 if self.status[event_id]["status"] < self.STATUS_URGENCY_3:
                     self.status[event_id]["status"] = self.STATUS_URGENCY_3
                     self.onNotify()
-                    my_sound.play()
+                    self.sound.play()
             elif event_in < ALERT_URGENCY_2_AFTER:
                 self.logger.info(f"Event {helpers.event_to_log(event)} starts in a bit: {event_in}")
                 if self.status[event_id]["status"] < self.STATUS_URGENCY_2:
