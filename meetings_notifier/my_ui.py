@@ -47,6 +47,18 @@ class MyConfig:
     }
 
 
+class MyAlerter:
+    def __init__(self, calendar):
+        self.calendar = calendar
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        self.do_notify = False
+        self.do_icon = False
+        self.do_sound = False
+
+        self.events = []
+
+
 class MyHandler:
 
     STATUS_WAITING = 0
