@@ -43,6 +43,32 @@ class MyAlerter:
         self.do_icon = False
         self.do_sound = False
 
+        self.notify_thread = threading.Thread(target=self.notify_thread_func)
+        self.icon_thread = threading.Thread(target=self.icon_thread_func)
+        self.sound_thread = threading.Thread(target=self.sound_thread_func)
+
+        self.notify_thread.start()
+        self.icon_thread.start()
+        self.sound_thread.start()
+
+    def notify_thread_func(self):
+        while True:
+            if self.do_notify:
+                print("Hello (Notify)")
+            time.sleep(10)
+
+    def icon_thread_func(self):
+        while True:
+            if self.do_icon:
+                print("Hello (Icon)")
+            time.sleep(10)
+
+    def sound_thread_func(self):
+        while True:
+            if self.do_sound:
+                print("Hello (Sound)")
+            time.sleep(10)
+
 
 class MyHandler:
 
