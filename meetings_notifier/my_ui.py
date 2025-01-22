@@ -46,7 +46,7 @@ class MyAlerter:
 
 class MyHandler:
 
-    def __init__(self, builder, calendar):
+    def __init__(self, calendar):
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.config = helpers.MyConfig()
@@ -86,7 +86,7 @@ class MyHandler:
         self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time)
 
     def onNotify(self, event_id):
-        text = event_to_text(self.calendar.events[event_id])
+        text = helpers.event_to_text(self.calendar.events[event_id])
         notification = Notify.Notification.new("Notification", text, ICON)
         notification.set_urgency(Notify.Urgency.CRITICAL)
         notification.add_action("acknowleadge", "Acknowleadge", self.onAlertAcknowleadge)
@@ -105,7 +105,7 @@ class MyHandler:
     def onTextChange(self):
         text = ""
         for event in self.calendar.events.values():
-            text += event_to_text(event) + "\n"
+            text += helpers.event_to_text(event) + "\n"
         self.buffer.set_text(text)
         return True
 
@@ -118,26 +118,26 @@ class MyHandler:
             event_in = (event["start"] - now).total_seconds()
 
             if event_in < ALERT_IGNORE_AFTER:
-                self.logger.warning(f"Ignoring event {event_to_log(event)} as it is overdue: {event_in}")
+                self.logger.warning(f"Ignoring event {helpers.event_to_log(event)} as it is overdue: {event_in}")
                 self.calendar.set_status(event_id, my_calendar.STATUS_ACKNOWLEADGED)
                 continue
 
             if event_in < ALERT_URGENCY_3_AFTER:
                 if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_3):
-                    self.logger.info(f"Event {event_to_log(event)} almost starts: {event_in}")
+                    self.logger.info(f"Event {helpers.event_to_log(event)} almost starts: {event_in}")
                     self.onNotify(event_id)
-                    my_sound.play()
+                    self.sound.play()
                     continue
 
             if event_in < ALERT_URGENCY_2_AFTER:
                 if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_2):
-                    self.logger.info(f"Event {event_to_log(event)} starts in a bit: {event_in}")
+                    self.logger.info(f"Event {helpers.event_to_log(event)} starts in a bit: {event_in}")
                     self.onNotify(event_id)
                     continue
 
             if event_in < ALERT_URGENCY_1_AFTER:
                 if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_1):
-                    self.logger.info(f"Event {event_to_log(event)} soon to start: {event_in}")
+                    self.logger.info(f"Event {helpers.event_to_log(event)} soon to start: {event_in}")
                     self.onNotify()
                     continue
 

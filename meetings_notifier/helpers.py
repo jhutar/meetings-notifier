@@ -56,14 +56,14 @@ def event_to_text(event):
     if event == {}:
         return "No event"
     else:
-        return f"When: {event['start']['dateTime'].isoformat()}\nWhat: {event['summary']}\n"
+        return f"When: {event['start'].isoformat()}\nWhat: {event['summary']}\n"
 
 
 def event_to_log(event):
     if event == {}:
         return "No event"
     else:
-        return f"{event['summary']}/{event['id']}({event['start']['dateTime'].isoformat()})"
+        return f"{event['summary']} ({event['start'].isoformat()})"
 
 
 class MyConfig:
