@@ -161,16 +161,16 @@ class MyNotification:
 
 
 
-class MyHandler:
+class MyApplication:
 
-    def __init__(self, calendar):
+    def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.config = helpers.MyConfig()
 
         self.sound = my_sound.MySound(self.config.config)
 
-        self.calendar = calendar
+        self.calendar = my_calendar.MyCalendar()
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
 
         glade_file = os.path.join(
@@ -180,7 +180,7 @@ class MyHandler:
         self._builder = Gtk.Builder()
         self._builder.add_from_file(glade_file)
 
-        self._window = MyWindow(self._builder, calendar)
+        self._window = MyWindow(self._builder, self.calendar)
         self._menu = MyMenu(self._builder)
         self._icon = MyIcon(self._menu.popup, self._window.toggle)
 

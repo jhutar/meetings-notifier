@@ -3,7 +3,6 @@ import logging
 import signal
 
 from . import my_ui
-from . import my_calendar
 from . import helpers
 
 
@@ -38,7 +37,5 @@ def main():
     # Handle pressing Ctr+C properly, ignored by default
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    calendar = my_calendar.MyCalendar()
-
-    handler = my_ui.MyHandler(calendar)
-    handler.run()
+    application = my_ui.MyApplication()
+    application.run()
