@@ -2,24 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import logging
-
-###import warnings
-###
-###warnings.filterwarnings(
-###    "ignore",
-###    category=RuntimeWarning,
-###    message="Your system is avx2 capable but pygame was not built with support for it.",
-###)
-###import pygame
-###
-###
-###pygame.mixer.init()
-###
-###def play(sound="/usr/share/sounds/alsa/Front_Center.wav"):
-###    pygame.mixer.music.load(sound)
-###    pygame.mixer.music.play()
-
-
 import pulsectl
 import wave
 import pasimple
@@ -27,7 +9,8 @@ import pasimple
 from . import helpers
 
 
-config = {
+# Config for testing
+_config = {
     "sound_alerts": [
         {
             "sink": "nonexixtent_sink",
@@ -91,5 +74,5 @@ class MySound:
 
 
 if __name__ == "__main__":
-    mysound = MySound(config)
+    mysound = MySound(_config)
     mysound.play()

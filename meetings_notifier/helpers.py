@@ -31,14 +31,6 @@ def setup_logger(stderr_log_lvl):
     )
     formatter.converter = time.gmtime
 
-    ## Silence loggers of some chatty libraries we use
-    #urllib_logger = logging.getLogger("urllib3.connectionpool")
-    #urllib_logger.setLevel(logging.WARNING)
-    #selenium_logger = logging.getLogger("selenium.webdriver.remote.remote_connection")
-    #selenium_logger.setLevel(logging.WARNING)
-    #kafka_logger = logging.getLogger("kafka")
-    #kafka_logger.setLevel(logging.WARNING)
-
     # Add stderr handler, with provided level
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
