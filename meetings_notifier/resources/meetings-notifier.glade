@@ -5,6 +5,7 @@
   <object class="GtkMenu" id="menu1">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
+    <!--
     <child>
       <object class="GtkMenuItem" id="menuitem2">
         <property name="visible">True</property>
@@ -23,12 +24,13 @@
         <signal name="activate" handler="onQuit" swapped="no"/>
       </object>
     </child>
+    -->
   </object>
   <object class="GtkWindow" id="window1">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">GTK Test</property>
     <property name="has-resize-grip">True</property>
-    <signal name="delete-event" handler="onShowOrHide" swapped="no"/>
+    <signal name="delete-event" handler="toggle" swapped="no"/>
     <child>
       <object class="GtkScrolledWindow" id="screolledwindow1">
         <property name="visible">True</property>

@@ -68,6 +68,95 @@ class MyAlerter:
             time.sleep(10)
 
 
+class MyMenu:
+
+    def __init__(self, builder):
+        self._menu = builder.get_object("menu1")
+
+    def popup(self, icon, button, time):
+        self._menu.popup(
+            None,
+            None,
+            Gtk.StatusIcon.position_menu,
+            icon,
+            button,
+            time,
+        )
+
+
+class MyIcon:
+
+    def __init__(self, menu_popup_callback, window_toggle_callback):
+        self._menu_popup_callback = menu_popup_callback
+        self._window_toggle_callback = window_toggle_callback
+
+        self._trayicon = Gtk.StatusIcon()
+        self._trayicon.set_from_file(ICON)
+        self._trayicon.connect("popup-menu", self.popup_menu)
+        self._trayicon.connect("activate", self.toggle_window)
+
+    def popup_menu(self, *args):
+        self._menu_popup_callback(*args)
+
+    def toggle_window(self, *args):
+        self._window_toggle_callback()
+
+
+class MyWindow:
+
+    def __init__(self, builder, calendar):
+        self._calendar = calendar
+
+        builder.connect_signals(self)
+
+        self._window = builder.get_object("window1")
+        self._window.set_icon_from_file(ICON)
+        self._window.hide()
+        self._window_is_hidden = True
+
+        text_view = builder.get_object("text1")
+        self._buffer = text_view.get_buffer()
+        GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.refresh_text)
+        self.refresh_text()
+
+    def refresh_text(self):
+        text = ""
+        for event in self._calendar.events.values():
+            text += helpers.event_to_text(event) + "\n"
+        self._buffer.set_text(text)
+        return True   # makes sure timer will not stop
+
+    def toggle(self):
+        if self._window_is_hidden:
+            self._window.show()
+            self._window_is_hidden = False
+        else:
+            self._window.hide()
+            self._window_is_hidden = True
+
+
+class MyNotification:
+
+    def __init__(self):
+        Notify.init(helpers.APP_ID)
+
+    def show(self, event_id):
+        text = helpers.event_to_text(self.calendar.events[event_id])
+        notification = Notify.Notification.new("Notification", text, ICON)
+        notification.set_urgency(Notify.Urgency.CRITICAL)
+        notification.add_action("acknowleadge", "Acknowleadge", self.acknowleadge)
+        notification.show()
+        self.event_id = event_id
+        self.calendar.set_notification(event_id, notification)
+
+    def acknowleadge(self, notification, action):
+        if action == "acknowleadge":
+            if self.calendar.set_status(self.event_id, my_calendar.STATUS_ACKNOWLEADGED):
+                self.logger.info(f"Event {self.event_id} was acknowleadged")
+
+
+
+
 class MyHandler:
 
     def __init__(self, calendar):
@@ -80,58 +169,21 @@ class MyHandler:
         self.calendar = calendar
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
 
-        self.builder = Gtk.Builder()
-        self.builder.add_from_file(os.path.join(helpers.CURRDIR, f"resources/{helpers.APP_NAME}.glade"))
-        self.builder.connect_signals(self)
+        glade_file = os.path.join(
+            helpers.CURRDIR,
+            f"resources/{helpers.APP_NAME}.glade",
+        )
+        self._builder = Gtk.Builder()
+        self._builder.add_from_file(glade_file)
 
-        self.window = self.builder.get_object("window1")
-        self.window.set_icon_from_file(ICON)
-        self.window.hide()
-        self.window_is_hidden = True
-
-        self.menu = self.builder.get_object("menu1")
-        self.trayicon = Gtk.StatusIcon()
-        self.trayicon.set_from_file(ICON)
-        self.trayicon.connect("popup-menu", self.onPopupMenu)
-        self.trayicon.connect("activate", self.onShowOrHide)
-
-        text_view = self.builder.get_object("text1")
-        self.buffer = text_view.get_buffer()
-        GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onTextChange)
-        self.onTextChange()
+        self._window = MyWindow(self._builder, calendar)
+        self._menu = MyMenu(self._builder)
+        self._icon = MyIcon(self._menu.popup, self._window.toggle)
 
         GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onAlertCheck)
 
     def run(self):
-        Notify.init(helpers.APP_ID)
         return Gtk.main()
-
-    def onPopupMenu(self, icon, button, time):
-        self.menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time)
-
-    def onNotify(self, event_id):
-        text = helpers.event_to_text(self.calendar.events[event_id])
-        notification = Notify.Notification.new("Notification", text, ICON)
-        notification.set_urgency(Notify.Urgency.CRITICAL)
-        notification.add_action("acknowleadge", "Acknowleadge", self.onAlertAcknowleadge)
-        notification.show()
-        notification.event_id = event_id   # HACK: Pass event ID with notification - it is used by acknowleadge callback
-        self.calendar.set_notification(event_id, notification)
-
-    def onShowOrHide(self, *args):
-        if self.window_is_hidden:
-            self.window.show()
-            self.window_is_hidden = False
-        else:
-            self.window.hide()
-            self.window_is_hidden = True
-
-    def onTextChange(self):
-        text = ""
-        for event in self.calendar.events.values():
-            text += helpers.event_to_text(event) + "\n"
-        self.buffer.set_text(text)
-        return True
 
     def onAlertCheck(self):
         for event_id, event in self.calendar.events.items():
@@ -166,11 +218,6 @@ class MyHandler:
                     continue
 
         return True
-
-    def onAlertAcknowleadge(self, notification, action):
-        if action == "acknowleadge":
-            if self.calendar.set_status(notification.event_id, my_calendar.STATUS_ACKNOWLEADGED):
-                self.logger.info(f"Event {notification.event_id} was acknowleadged")
 
     def onQuit(self, *args):
         Notify.uninit()
