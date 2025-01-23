@@ -5,14 +5,13 @@
   <object class="GtkMenu" id="menu1">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
-    <!--
     <child>
       <object class="GtkMenuItem" id="menuitem2">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="label" translatable="yes">Show/hide window</property>
         <property name="use-underline">True</property>
-        <signal name="activate" handler="onShowOrHide" swapped="no"/>
+        <signal name="activate" handler="toggle" swapped="no"/>
       </object>
     </child>
     <child>
@@ -21,10 +20,9 @@
         <property name="can-focus">False</property>
         <property name="label" translatable="yes">Quit</property>
         <property name="use-underline">True</property>
-        <signal name="activate" handler="onQuit" swapped="no"/>
+        <signal name="activate" handler="quit" swapped="no"/>
       </object>
     </child>
-    -->
   </object>
   <object class="GtkWindow" id="window1">
     <property name="can-focus">False</property>

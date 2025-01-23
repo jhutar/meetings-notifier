@@ -126,13 +126,17 @@ class MyWindow:
         self._buffer.set_text(text)
         return True   # makes sure timer will not stop
 
-    def toggle(self):
+    def toggle(self, *args):
         if self._window_is_hidden:
             self._window.show()
             self._window_is_hidden = False
         else:
             self._window.hide()
             self._window_is_hidden = True
+
+    def quit(self, *args):
+        Notify.uninit()
+        Gtk.main_quit()
 
 
 class MyNotification:
@@ -218,7 +222,3 @@ class MyHandler:
                     continue
 
         return True
-
-    def onQuit(self, *args):
-        Notify.uninit()
-        Gtk.main_quit()
