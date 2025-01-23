@@ -21,9 +21,7 @@ from . import my_sound
 from . import helpers
 
 
-APPID = "com.github.jhutar.meetings-notifier"
-CURRDIR = os.path.dirname(os.path.abspath(__file__))
-ICON = os.path.join(CURRDIR, "python3.xpm")
+ICON = os.path.join(helpers.CURRDIR, "resources/python.xpm")
 TIMER_CALENDAR_REFRESH = 60
 TIMER_WINDOW_TEXT_REFRESH = 3
 TIMER_ALERT_CHECK = 3
@@ -83,7 +81,7 @@ class MyHandler:
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
 
         self.builder = Gtk.Builder()
-        self.builder.add_from_file(os.path.join(CURRDIR, "meetings_notifier.glade"))
+        self.builder.add_from_file(os.path.join(helpers.CURRDIR, f"resources/{helpers.APP_NAME}.glade"))
         self.builder.connect_signals(self)
 
         self.window = self.builder.get_object("window1")
@@ -105,7 +103,7 @@ class MyHandler:
         GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onAlertCheck)
 
     def run(self):
-        Notify.init(APPID)
+        Notify.init(helpers.APP_ID)
         return Gtk.main()
 
     def onPopupMenu(self, icon, button, time):

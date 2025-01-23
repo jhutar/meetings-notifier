@@ -3,7 +3,13 @@ import logging.handlers
 import os.path
 import shutil
 import time
+import xdg.BaseDirectory
 import yaml
+
+
+APP_NAME = "meetings-notifier"
+APP_ID = f"com.github.jhutar.{APP_NAME}"
+CURRDIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def setup_logger(stderr_log_lvl):
@@ -40,8 +46,10 @@ def setup_logger(stderr_log_lvl):
     logging.getLogger().addHandler(console_handler)
 
     # Add file rotating handler, with level DEBUG
+    log_dir = xdg.BaseDirectory.save_cache_path(APP_NAME)
+    log_file = os.path.join(log_dir, f"{APP_NAME}.log")
     rotating_handler = logging.handlers.RotatingFileHandler(
-        filename="/tmp/meetings_notifier.log",
+        filename=log_file,
         maxBytes=100 * 1000,
         backupCount=2,
     )
@@ -49,7 +57,9 @@ def setup_logger(stderr_log_lvl):
     rotating_handler.setLevel(logging.DEBUG)
     logging.getLogger().addHandler(rotating_handler)
 
-    return logging.getLogger()
+    logger = logging.getLogger()
+    logger.info(f"Logging to {log_file}")
+    return logger
 
 
 def event_to_text(event):
@@ -70,13 +80,15 @@ class MyConfig:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        # TODO: Lets use XDG spec for placing config (and logs): https://stackoverflow.com/questions/52670836/standard-log-locations-for-a-cross-platform-application
-        user_home_dir = os.path.expanduser("~")
-        user_config = os.path.join(user_home_dir, ".meetings_notifier")
+        default_config = os.path.join(CURRDIR, f"resources/{APP_NAME}.config")
+
+        config_dir = xdg.BaseDirectory.save_config_path(APP_NAME)
+        user_config = os.path.join(config_dir, f"{APP_NAME}.config")
 
         if not os.path.isfile(user_config):
             self.logger.info(f"Copying default config to {user_config}")
-            shutil.copyfile("meetings_notifier.config", user_config)
+            shutil.copyfile(default_config, user_config)
 
+        self.logger.info(f"Loading config from {user_config}")
         with open(user_config, "r") as fd:
             self.config = yaml.safe_load(fd)

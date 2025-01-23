@@ -24,6 +24,9 @@ import pulsectl
 import wave
 import pasimple
 
+from . import helpers
+
+
 config = {
     "sound_alerts": [
         {
@@ -44,7 +47,7 @@ class MySound:
     def __init__(self, config):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config = config
-        self.pulse = pulsectl.Pulse('meetings_notifier')
+        self.pulse = pulsectl.Pulse(helpers.APP_NAME)
 
         # Read a .wav file with its attributes
         with wave.open(self.config["sound_file"], "rb") as wave_file:
@@ -76,7 +79,7 @@ class MySound:
                 self._format,
                 self._channels,
                 self._sample_rate,
-                app_name="meetings_notifier",
+                app_name=helpers.APP_NAME,
                 device_name=sink.name
             ) as pa:
                 pa.write(self._audio_data)
