@@ -1,4 +1,3 @@
-import collections
 import datetime
 import logging
 import os
@@ -20,10 +19,63 @@ STATUS_URGENCY_2 = 2
 STATUS_URGENCY_3 = 3
 STATUS_ACKNOWLEADGED = 10
 
-class MyCalendar():
+
+class CalEvent:
+    def __init__(self, gcalevent):
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        self._data = {}
+        self.populate(gcalevent)
+
+    def populate(self, gcalevent):
+        if "id" in self._data:
+            assert self.id == gcalevent["id"], \
+                "This is not the event you are looking for ({self.id} != {gcalevent['id']})"
+        else:
+            self._data["id"] = gcalevent["id"]
+        self._data["summary"] = gcalevent["summary"]
+        self._data["start"] = datetime.datetime.fromisoformat(gcalevent["start"]["dateTime"])
+        self._data["end"] = datetime.datetime.fromisoformat(gcalevent["end"]["dateTime"])
+
+    def update(self, event):
+        assert self.id == event.id, \
+            "This is not the event you are looking for ({self.id} != {event.id})"
+        self._data["summary"] = event.summary
+        self._data["start"] = event.start
+        self._data["end"] = event.end
+
+    @property
+    def id(self):
+        """ID of a calendar event."""
+        return self._data["id"]
+
+    @property
+    def summary(self):
+        """Summary of a calendar event."""
+        return self._data["summary"]
+
+    @property
+    def start(self):
+        """Start date time of a calendar event."""
+        return self._data["start"]
+
+    @property
+    def end(self):
+        """End date time of a calendar event."""
+        return self._data["end"]
+
+    def __str__(self):
+        print(">>>", self._data)
+        return f"<CalEvent {self.summary} ({self.start.isoformat()})>"
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+
+class MyCalendar:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.events = collections.OrderedDict()
+        self.events = []
         self._credentials_failed = 0
         self.refresh_events()
 
@@ -127,25 +179,15 @@ class MyCalendar():
             self.logger.warning(f"Failed to process event: {event}")
 
     def _populate_events(self):
-        for event in self._filtered_events():
-            self.logger.debug(f"Loaded event {event['summary']} ({event['start']['dateTime']} - {event['end']['dateTime']})")
-            event_id, event_simple = self._cal_to_event(event)
-            if event_id not in self.events:
-                self.events[event_id] = event_simple
+        for gcalevent in self._filtered_events():
+            event = CalEvent(gcalevent)
+            self.logger.debug(f"Loaded event {event}")
+            try:
+                i = self.events.index(event)
+            except ValueError:
+                self.events.append(event)
             else:
-                self.events[event_id].update(event_simple)
-
-    def _cal_to_event(self, event):
-        """Convert calendar event to simplified event representation we use internally"""
-        event_id = event["id"]
-        event_start = datetime.datetime.fromisoformat(event["start"]["dateTime"])
-        event_end = datetime.datetime.fromisoformat(event["end"]["dateTime"])
-        event_summary = event["summary"]
-        return event_id, {
-            "summary": event_summary,
-            "start": event_start,
-            "end": event_end,
-        }
+                self.events[i].update(event)
 
     def refresh_events(self):
         # TODO: Make this a non blocking thread

@@ -283,5 +283,5 @@ class TestCalendar(unittest.TestCase):
         ) as mock_populate:
             calendar = meetings_notifier.my_calendar.MyCalendar()
             self.assertEqual(len(calendar.events), 10)
-            self.assertEqual(type(calendar.events[0]["start"]["dateTime"]), datetime.datetime)
-            self.assertEqual(type(calendar.events[0]["end"]["dateTime"]), datetime.datetime)
+            self.assertEqual(type(calendar.events[0].start), datetime.datetime)
+            self.assertEqual(type(calendar.events[0].end), datetime.datetime)
