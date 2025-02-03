@@ -27,9 +27,9 @@ ICON = os.path.join(helpers.CURRDIR, "resources/python.xpm")
 TIMER_CALENDAR_REFRESH = 60
 TIMER_WINDOW_TEXT_REFRESH = 3
 TIMER_ALERT_CHECK = 3
-ALERT_URGENCY_1_AFTER = 200000
-ALERT_URGENCY_2_AFTER = 30
-ALERT_URGENCY_3_AFTER = 10
+ALERT_URGENCY_1_AFTER = 200002
+ALERT_URGENCY_2_AFTER = 200001
+ALERT_URGENCY_3_AFTER = 200000
 ALERT_IGNORE_AFTER = -600
 
 
@@ -96,6 +96,7 @@ class MyAlerter:
         while True:
             if self.do_sound:
                 print(f"Alerter sound {self._event}")
+                self._sound.play()
             time.sleep(10)
 
 
