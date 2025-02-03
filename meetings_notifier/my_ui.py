@@ -5,6 +5,8 @@
 import datetime
 import logging
 import os
+import threading
+import time
 import yaml
 import gi
 
@@ -25,17 +27,20 @@ ICON = os.path.join(helpers.CURRDIR, "resources/python.xpm")
 TIMER_CALENDAR_REFRESH = 60
 TIMER_WINDOW_TEXT_REFRESH = 3
 TIMER_ALERT_CHECK = 3
-ALERT_URGENCY_1_AFTER = 100
+ALERT_URGENCY_1_AFTER = 200000
 ALERT_URGENCY_2_AFTER = 30
 ALERT_URGENCY_3_AFTER = 10
-ALERT_URGENCY_3_AFTER = (datetime.datetime.fromisoformat("2025-01-09T17:30:00+00:00") - datetime.datetime.now(datetime.timezone.utc)).seconds - 2
 ALERT_IGNORE_AFTER = -600
 
 
 class MyAlerter:
-    def __init__(self, calendar):
-        self.calendar = calendar
+    def __init__(self, icon, sound):
         self.logger = logging.getLogger(self.__class__.__name__)
+
+        self._notification = None
+        self._icon = icon
+        self._sound = sound
+        self._event = None
 
         self.do_notify = False
         self.do_icon = False
@@ -49,22 +54,48 @@ class MyAlerter:
         self.icon_thread.start()
         self.sound_thread.start()
 
+    def set_event(self, event, urgency):
+        self._event = event
+        if urgency == 1:
+            self.do_notify, self.do_icon, self.do_sound = (True, False, False)
+        elif urgency == 2:
+            self.do_notify, self.do_icon, self.do_sound = (True, True, False)
+        elif urgency == 3:
+            self.do_notify, self.do_icon, self.do_sound = (True, True, True)
+        else:
+            self.logger.warning(f"Unknown urgency for event {event}: {urgency}")
+
+    def reset_event(self):
+        # If some notification is active, remove it
+        if self._notification is not None:
+            self._notification.close()
+
+        self.do_notify, self.do_icon, self.do_sound = (False, False, False)
+        self._event = None
+
+    def ack_event(self):
+        self._event.acknowleadged = True
+        self.reset_event()
+
     def notify_thread_func(self):
         while True:
             if self.do_notify:
-                print("Hello (Notify)")
+                print(f"Alerter notify {self._event}")
+                if self._notification is not None:
+                    self._notification.close()
+                self._notification = MyNotification(self._event, self.ack_event)
             time.sleep(10)
 
     def icon_thread_func(self):
         while True:
             if self.do_icon:
-                print("Hello (Icon)")
+                print(f"Alerter icon {self._event}")
             time.sleep(10)
 
     def sound_thread_func(self):
         while True:
             if self.do_sound:
-                print("Hello (Sound)")
+                print(f"Alerter sound {self._event}")
             time.sleep(10)
 
 
@@ -134,6 +165,10 @@ class MyWindow:
             self._window.hide()
             self._window_is_hidden = True
 
+    def run(self):
+        Notify.init(helpers.APP_ID)
+        return Gtk.main()
+
     def quit(self, *args):
         Notify.uninit()
         Gtk.main_quit()
@@ -141,24 +176,27 @@ class MyWindow:
 
 class MyNotification:
 
-    def __init__(self):
-        Notify.init(helpers.APP_ID)
+    def __init__(self, event, ack_callback):
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-    def show(self, event_id):
-        text = event.to_text()
-        notification = Notify.Notification.new("Notification", text, ICON)
-        notification.set_urgency(Notify.Urgency.CRITICAL)
-        notification.add_action("acknowleadge", "Acknowleadge", self.acknowleadge)
-        notification.show()
-        self.event_id = event_id
-        self.calendar.set_notification(event_id, notification)
+        self._event = event
+        self._ack_callback = ack_callback
+
+        text = self._event.to_text()
+        self._notification = Notify.Notification.new("Notification", text, ICON)
+        self._notification.set_urgency(Notify.Urgency.CRITICAL)
+        self._notification.set_timeout(10 * 1000)
+        self._notification.add_action("acknowleadge", "Acknowleadge", self.acknowleadge)
+        self._notification.show()
 
     def acknowleadge(self, notification, action):
         if action == "acknowleadge":
-            if self.calendar.set_status(self.event_id, my_calendar.STATUS_ACKNOWLEADGED):
-                self.logger.info(f"Event {self.event_id} was acknowleadged")
+            self.logger.info(f"Event {self._event} acknowleadged")
+            self._ack_callback()
 
-
+    def close(self):
+        self._notification.close()
+        self._notification = None
 
 
 class MyApplication:
@@ -168,7 +206,7 @@ class MyApplication:
 
         self.config = helpers.MyConfig()
 
-        self.sound = my_sound.MySound(self.config.config)
+        self._sound = my_sound.MySound(self.config.config)
 
         self.calendar = my_calendar.MyCalendar()
         GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
@@ -184,10 +222,12 @@ class MyApplication:
         self._menu = MyMenu(self._builder)
         self._icon = MyIcon(self._menu.popup, self._window.toggle)
 
+        self.alerter = MyAlerter(self._icon, self._sound)
+
         GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onAlertCheck)
 
     def run(self):
-        return Gtk.main()
+        return self._window.run()
 
     def _get_more_urgent(self, eu1, eu2):
         """Decide which touple of event and it's urgency is more important."""
@@ -224,18 +264,19 @@ class MyApplication:
                 continue
 
             if event_in < ALERT_URGENCY_3_AFTER:
-                self.logger.info(f"Event {event} almost starts: {event_in}")
                 alert = self._get_more_urgent(alert, (event, 3))
                 continue
 
             if event_in < ALERT_URGENCY_2_AFTER:
-                self.logger.info(f"Event {event} starts in a bit: {event_in}")
                 alert = self._get_more_urgent(alert, (event, 2))
                 continue
 
             if event_in < ALERT_URGENCY_1_AFTER:
-                self.logger.info(f"Event {event} soon to start: {event_in}")
                 alert = self._get_more_urgent(alert, (event, 1))
                 continue
+
+        if alert[0] is not None:
+            self.logger.debug(f"Event {alert[0]} soon to start, urgency {alert[1]}")
+            self.alerter.set_event(*alert)
 
         return True
