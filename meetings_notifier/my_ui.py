@@ -121,8 +121,8 @@ class MyWindow:
 
     def refresh_text(self):
         text = ""
-        for event in self._calendar.events.values():
-            text += helpers.event_to_text(event) + "\n"
+        for event in self._calendar.events:
+            text += event.to_text() + "\n"
         self._buffer.set_text(text)
         return True   # makes sure timer will not stop
 
@@ -145,7 +145,7 @@ class MyNotification:
         Notify.init(helpers.APP_ID)
 
     def show(self, event_id):
-        text = helpers.event_to_text(self.calendar.events[event_id])
+        text = event.to_text()
         notification = Notify.Notification.new("Notification", text, ICON)
         notification.set_urgency(Notify.Urgency.CRITICAL)
         notification.add_action("acknowleadge", "Acknowleadge", self.acknowleadge)
@@ -189,36 +189,53 @@ class MyApplication:
     def run(self):
         return Gtk.main()
 
+    def _get_more_urgent(self, eu1, eu2):
+        """Decide which touple of event and it's urgency is more important."""
+        event1, urgency1 = eu1
+        event2, urgency2 = eu2
+
+        if event1 is None:
+            return eu2
+
+        if urgency1 == urgency2:
+            if event1.start < event2.start:
+                return eu1
+            else:
+                return eu2
+        else:
+            if urgency1 > urgency2:
+                return eu1
+            else:
+                return eu2
+
     def onAlertCheck(self):
-        for event_id, event in self.calendar.events.items():
-            if self.calendar.get_status(event_id) >= my_calendar.STATUS_ACKNOWLEADGED:
+        alert = (None, 0)   # event and it's urgency with highest score
+
+        for event in self.calendar.events:
+            if event.acknowleadged:
                 continue
 
             now = datetime.datetime.now(datetime.timezone.utc)
-            event_in = (event["start"] - now).total_seconds()
+            event_in = (event.start - now).total_seconds()
 
             if event_in < ALERT_IGNORE_AFTER:
-                self.logger.warning(f"Ignoring event {helpers.event_to_log(event)} as it is overdue: {event_in}")
-                self.calendar.set_status(event_id, my_calendar.STATUS_ACKNOWLEADGED)
+                self.logger.warning(f"Ignoring event {event} as it is overdue: {event_in}")
+                event.acknowleadged = True
                 continue
 
             if event_in < ALERT_URGENCY_3_AFTER:
-                if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_3):
-                    self.logger.info(f"Event {helpers.event_to_log(event)} almost starts: {event_in}")
-                    self.onNotify(event_id)
-                    self.sound.play()
-                    continue
+                self.logger.info(f"Event {event} almost starts: {event_in}")
+                alert = self._get_more_urgent(alert, (event, 3))
+                continue
 
             if event_in < ALERT_URGENCY_2_AFTER:
-                if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_2):
-                    self.logger.info(f"Event {helpers.event_to_log(event)} starts in a bit: {event_in}")
-                    self.onNotify(event_id)
-                    continue
+                self.logger.info(f"Event {event} starts in a bit: {event_in}")
+                alert = self._get_more_urgent(alert, (event, 2))
+                continue
 
             if event_in < ALERT_URGENCY_1_AFTER:
-                if self.calendar.set_status(event_id, my_calendar.STATUS_URGENCY_1):
-                    self.logger.info(f"Event {helpers.event_to_log(event)} soon to start: {event_in}")
-                    self.onNotify()
-                    continue
+                self.logger.info(f"Event {event} soon to start: {event_in}")
+                alert = self._get_more_urgent(alert, (event, 1))
+                continue
 
         return True

@@ -54,20 +54,6 @@ def setup_logger(stderr_log_lvl):
     return logger
 
 
-def event_to_text(event):
-    if event == {}:
-        return "No event"
-    else:
-        return f"When: {event['start'].isoformat()}\nWhat: {event['summary']}\n"
-
-
-def event_to_log(event):
-    if event == {}:
-        return "No event"
-    else:
-        return f"{event['summary']} ({event['start'].isoformat()})"
-
-
 class MyConfig:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)

@@ -13,18 +13,13 @@ from concurrent.futures import TimeoutError
 secret_file="client_secret.json"
 scope="https://www.googleapis.com/auth/calendar.events.readonly"
 
-STATUS_WAITING = 0
-STATUS_URGENCY_1 = 1
-STATUS_URGENCY_2 = 2
-STATUS_URGENCY_3 = 3
-STATUS_ACKNOWLEADGED = 10
-
 
 class CalEvent:
     def __init__(self, gcalevent):
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self._data = {}
+        self._acked = False
         self.populate(gcalevent)
 
     def populate(self, gcalevent):
@@ -41,7 +36,9 @@ class CalEvent:
         assert self.id == event.id, \
             "This is not the event you are looking for ({self.id} != {event.id})"
         self._data["summary"] = event.summary
-        self._data["start"] = event.start
+        if self._data["start"] != event.start:
+            self._data["start"] = event.start
+            self._acked = False   # if start time changed, reset ack flag
         self._data["end"] = event.end
 
     @property
@@ -64,12 +61,25 @@ class CalEvent:
         """End date time of a calendar event."""
         return self._data["end"]
 
+    @property
+    def acknowleadged(self):
+        """Get if this event was already acknowleadged (i.e. should not be alerted for)."""
+        return self._acked
+
+    @acknowleadged.setter
+    def acknowleadged(self, value):
+        """Acknowleadge this event."""
+        assert value is True, "Only allowed value is True"
+        self._acked = value
+
     def __str__(self):
-        print(">>>", self._data)
         return f"<CalEvent {self.summary} ({self.start.isoformat()})>"
 
     def __eq__(self, other):
         return self.id == other.id
+
+    def to_text(self):
+        return f"When: {self.start.isoformat()}\nWhat: {self.summary}\n"
 
 
 class MyCalendar:
@@ -199,16 +209,3 @@ class MyCalendar:
 
     def get_notification(self, event_id):
         return self.events[event_id].get("notification", None)
-
-    def set_status(self, event_id, status):
-        status_current = self.get_status(event_id)
-        if status == status_current:
-            return False
-        if status > status_current:
-            self.events[event_id]["status"] = status
-            return True
-        else:
-            raise ValueError(f"Status {status} is not higher than current {status_current}")
-
-    def get_status(self, event_id):
-        return self.events[event_id].get("status", STATUS_WAITING)
