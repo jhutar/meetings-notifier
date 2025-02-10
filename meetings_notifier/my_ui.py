@@ -34,10 +34,10 @@ ALERT_IGNORE_AFTER = -600
 
 
 class MyAlerter:
-    def __init__(self, icon, sound):
+    def __init__(self, notify, icon, sound):
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self._notification = None
+        self._notify = notify
         self._icon = icon
         self._sound = sound
         self._event = None
@@ -67,8 +67,7 @@ class MyAlerter:
 
     def reset_event(self):
         # If some notification is active, remove it
-        if self._notification is not None:
-            self._notification.close()
+        self._notify.close()
 
         self.do_notify, self.do_icon, self.do_sound = (False, False, False)
         self._event = None
@@ -81,9 +80,8 @@ class MyAlerter:
         while True:
             if self.do_notify:
                 print(f"Alerter notify {self._event}")
-                if self._notification is not None:
-                    self._notification.close()
-                self._notification = MyNotification(self._event, self.ack_event)
+                self._notify.close()
+                self._notify.notify(self._event, self.ack_event)
             time.sleep(10)
 
     def icon_thread_func(self):
@@ -167,19 +165,24 @@ class MyWindow:
             self._window_is_hidden = True
 
     def run(self):
-        Notify.init(helpers.APP_ID)
         return Gtk.main()
 
     def quit(self, *args):
-        Notify.uninit()
         Gtk.main_quit()
 
 
 class MyNotification:
 
-    def __init__(self, event, ack_callback):
+    def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
+        Notify.init(helpers.APP_ID)
+
+        self._event = None
+        self._ack_callback = None
+        self._notification = None
+
+    def notify(self, event, ack_callback):
         self._event = event
         self._ack_callback = ack_callback
 
@@ -199,6 +202,9 @@ class MyNotification:
         if self._notification is not None:
             self._notification.close()
             self._notification = None
+
+    def quit(self):
+        Notify.uninit()
 
 
 class MyApplication:
@@ -223,13 +229,16 @@ class MyApplication:
         self._window = MyWindow(self._builder, self.calendar)
         self._menu = MyMenu(self._builder)
         self._icon = MyIcon(self._menu.popup, self._window.toggle)
+        self._notify = MyNotification()
 
-        self.alerter = MyAlerter(self._icon, self._sound)
+        self.alerter = MyAlerter(self._notify, self._icon, self._sound)
 
         GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onAlertCheck)
 
     def run(self):
-        return self._window.run()
+        out = self._window.run()
+        self._notify.quit()
+        return out
 
     def _get_more_urgent(self, eu1, eu2):
         """Decide which touple of event and it's urgency is more important."""
