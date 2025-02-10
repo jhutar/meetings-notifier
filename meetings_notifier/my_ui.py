@@ -24,13 +24,6 @@ from . import helpers
 
 
 ICON = os.path.join(helpers.CURRDIR, "resources/python.xpm")
-TIMER_CALENDAR_REFRESH = 60
-TIMER_WINDOW_TEXT_REFRESH = 3
-TIMER_ALERT_CHECK = 3
-ALERT_URGENCY_1_AFTER = 200002
-ALERT_URGENCY_2_AFTER = 200001
-ALERT_URGENCY_3_AFTER = 200000
-ALERT_IGNORE_AFTER = -600
 
 
 class MyAlerter:
@@ -134,7 +127,7 @@ class MyIcon:
 
 class MyWindow:
 
-    def __init__(self, builder, calendar):
+    def __init__(self, builder, calendar, config):
         self._calendar = calendar
 
         builder.connect_signals(self)
@@ -146,7 +139,10 @@ class MyWindow:
 
         text_view = builder.get_object("text1")
         self._buffer = text_view.get_buffer()
-        GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.refresh_text)
+        GObject.timeout_add_seconds(
+            self.config.config["timers"]["window_text"],
+            self.refresh_text,
+        )
         self.refresh_text()
 
     def refresh_text(self):
@@ -214,10 +210,11 @@ class MyApplication:
 
         self.config = helpers.MyConfig()
 
-        self._sound = my_sound.MySound(self.config.config)
-
         self.calendar = my_calendar.MyCalendar()
-        GObject.timeout_add_seconds(TIMER_CALENDAR_REFRESH, self.calendar.refresh_events)
+        GObject.timeout_add_seconds(
+            self.config.config["timers"]["calendar_refresh"],
+            self.calendar.refresh_events,
+        )
 
         glade_file = os.path.join(
             helpers.CURRDIR,
@@ -226,14 +223,18 @@ class MyApplication:
         self._builder = Gtk.Builder()
         self._builder.add_from_file(glade_file)
 
-        self._window = MyWindow(self._builder, self.calendar)
+        self._window = MyWindow(self._builder, self.calendar, self.config)
         self._menu = MyMenu(self._builder)
         self._icon = MyIcon(self._menu.popup, self._window.toggle)
         self._notify = MyNotification()
+        self._sound = my_sound.MySound(self.config)
 
         self.alerter = MyAlerter(self._notify, self._icon, self._sound)
 
-        GObject.timeout_add_seconds(TIMER_WINDOW_TEXT_REFRESH, self.onAlertCheck)
+        GObject.timeout_add_seconds(
+            self.config.config["timers"]["alert_check"],
+            self.onAlertCheck,
+        )
 
     def run(self):
         out = self._window.run()
@@ -269,20 +270,20 @@ class MyApplication:
             now = datetime.datetime.now(datetime.timezone.utc)
             event_in = (event.start - now).total_seconds()
 
-            if event_in < ALERT_IGNORE_AFTER:
+            if event_in < self.config.config["alerts"]["ignore"]:
                 self.logger.warning(f"Ignoring event {event} as it is overdue: {event_in}")
                 event.acknowleadged = True
                 continue
 
-            if event_in < ALERT_URGENCY_3_AFTER:
+            if event_in < self.config.config["alerts"]["urgency_3"]:
                 alert = self._get_more_urgent(alert, (event, 3))
                 continue
 
-            if event_in < ALERT_URGENCY_2_AFTER:
+            if event_in < self.config.config["alerts"]["urgency_2"]:
                 alert = self._get_more_urgent(alert, (event, 2))
                 continue
 
-            if event_in < ALERT_URGENCY_1_AFTER:
+            if event_in < self.config.config["alerts"]["urgency_1"]:
                 alert = self._get_more_urgent(alert, (event, 1))
                 continue
 

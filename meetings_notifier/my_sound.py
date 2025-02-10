@@ -10,21 +10,22 @@ from . import helpers
 
 
 # Config for testing
-_config = {
-    "sound_alerts": [
-        {
-            "sink": "nonexixtent_sink",
-            "modify": True,
-            "volume": 0.3,
-        },
-        {
-            "sink": "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink",
-            "modify": True,
-            "volume": 0.3,
-        },
-    ],
-    "sound_file": "/usr/share/sounds/alsa/Front_Center.wav",
-}
+class _config:
+    config = {
+        "sound_alerts": [
+            {
+                "sink": "nonexixtent_sink",
+                "modify": True,
+                "volume": 0.3,
+            },
+            {
+                "sink": "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink",
+                "modify": True,
+                "volume": 0.3,
+            },
+        ],
+        "sound_file": "/usr/share/sounds/alsa/Front_Center.wav",
+    }
 
 class MySound:
     def __init__(self, config):
@@ -33,16 +34,16 @@ class MySound:
         self.pulse = pulsectl.Pulse(helpers.APP_NAME)
 
         # Read a .wav file with its attributes
-        with wave.open(self.config["sound_file"], "rb") as wave_file:
+        with wave.open(self.config.config["sound_file"], "rb") as wave_file:
             self._format = pasimple.width2format(wave_file.getsampwidth())
             self._channels = wave_file.getnchannels()
             self._sample_rate = wave_file.getframerate()
             self._audio_data = wave_file.readframes(wave_file.getnframes())
-            self.logger.info(f"Loaded file {self.config['sound_file']}: format: {self._format}, channels: {self._channels}, sample rate: {self._sample_rate}, data size: {len(self._audio_data)}")
+            self.logger.info(f"Loaded file {self.config.config['sound_file']}: format: {self._format}, channels: {self._channels}, sample rate: {self._sample_rate}, data size: {len(self._audio_data)}")
 
     def play(self):
         """Play the file via PulseAudio once in all configured and available sinks, play it once"""
-        for sink_setup in self.config["sound_alerts"]:
+        for sink_setup in self.config.config["sound_alerts"]:
             try:
                 sink = self.pulse.get_sink_by_name(sink_setup["sink"])
             except pulsectl.pulsectl.PulseIndexError:
@@ -74,5 +75,5 @@ class MySound:
 
 
 if __name__ == "__main__":
-    mysound = MySound(_config)
+    mysound = MySound(_config())
     mysound.play()
