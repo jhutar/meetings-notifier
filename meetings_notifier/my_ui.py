@@ -196,8 +196,9 @@ class MyNotification:
             self._ack_callback()
 
     def close(self):
-        self._notification.close()
-        self._notification = None
+        if self._notification is not None:
+            self._notification.close()
+            self._notification = None
 
 
 class MyApplication:
