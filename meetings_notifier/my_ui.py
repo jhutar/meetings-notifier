@@ -140,7 +140,7 @@ class MyWindow:
         text_view = builder.get_object("text1")
         self._buffer = text_view.get_buffer()
         GObject.timeout_add_seconds(
-            self.config.config["timers"]["window_text"],
+            config.config["timers"]["window_text"],
             self.refresh_text,
         )
         self.refresh_text()
