@@ -23,7 +23,10 @@ from . import my_sound
 from . import helpers
 
 
-ICON = os.path.join(helpers.CURRDIR, "resources/python.xpm")
+ICON_IDLE = os.path.join(helpers.CURRDIR, "resources/icon_idle.svg")
+ICON_1 = os.path.join(helpers.CURRDIR, "resources/icon_1.svg")
+ICON_2 = os.path.join(helpers.CURRDIR, "resources/icon_2.svg")
+ICON_3 = os.path.join(helpers.CURRDIR, "resources/icon_3.svg")
 
 
 class MyAlerter:
@@ -114,7 +117,7 @@ class MyIcon:
         self._window_toggle_callback = window_toggle_callback
 
         self._trayicon = Gtk.StatusIcon()
-        self._trayicon.set_from_file(ICON)
+        self._trayicon.set_from_file(ICON_IDLE)
         self._trayicon.connect("popup-menu", self.popup_menu)
         self._trayicon.connect("activate", self.toggle_window)
 
@@ -133,7 +136,7 @@ class MyWindow:
         builder.connect_signals(self)
 
         self._window = builder.get_object("window1")
-        self._window.set_icon_from_file(ICON)
+        self._window.set_icon_from_file(ICON_IDLE)
         self._window.hide()
         self._window_is_hidden = True
 
@@ -183,7 +186,7 @@ class MyNotification:
         self._ack_callback = ack_callback
 
         text = self._event.to_text()
-        self._notification = Notify.Notification.new("Notification", text, ICON)
+        self._notification = Notify.Notification.new("Notification", text, ICON_1)
         self._notification.set_urgency(Notify.Urgency.CRITICAL)
         self._notification.set_timeout(10 * 1000)
         self._notification.add_action("acknowleadge", "Acknowleadge", self.acknowleadge)
