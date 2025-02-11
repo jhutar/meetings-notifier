@@ -68,5 +68,26 @@ class MyConfig:
             shutil.copyfile(default_config, user_config)
 
         self.logger.info(f"Loading config from {user_config}")
-        with open(user_config, "r") as fd:
+        with open(default_config, "r") as fd:
             self.config = yaml.safe_load(fd)
+        with open(user_config, "r") as fd:
+            user_config_loaded = yaml.safe_load(fd)
+        self.config = self.merge(self.config, user_config_loaded)
+
+    def merge(self, default_config, user_config):
+        """
+        Recursively merges two dictionaries, giving priority to user_config.
+        """
+        for key, value in user_config.items():
+            if key in default_config:
+                if isinstance(value, dict) and isinstance(default_config[key], dict):
+                    default_config[key] = self.merge(default_config[key], value)
+                elif type(value) == type(default_config[key]):
+                    default_config[key] = value
+                else:
+                    self.logger.warning(f"Key {key} type in user config is incorrect, overwriting it with default")
+                    default_config[key] = value
+            else:
+                default_config[key] = value
+
+        return default_config
